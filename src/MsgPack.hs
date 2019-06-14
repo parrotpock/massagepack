@@ -29,3 +29,19 @@ parseBool = do
 instance FromMsgPack Bool where
   unpack b = runGet parseBool b
 
+parseNil :: Get (Maybe ())
+parseNil = do
+  msgpackType <- getWord8
+  return (case msgpackType of
+    0xc0 -> Just ()
+    _    -> Nothing)
+
+instance FromMsgPack () where
+  unpack b = runGet parseNil b
+
+unparseNil :: () -> Put
+unparseNil () = putWord8 0xc0
+
+instance ToMsgPack () where
+  pack b = runPut $ unparseNil b
+
