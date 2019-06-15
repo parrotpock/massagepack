@@ -4,9 +4,10 @@ module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
 import qualified Data.ByteString.Lazy as BS
 import Data.Binary.Put (putWord8, Put, runPut, putInt32be)
-import Data.Binary.Get (Get, getWord8, runGet, getInt32be)
+import Data.Binary.Get (Get, getWord8, runGet, getInt32be, getInt16be)
 import Data.Int (Int32)
 import Data.Word (Word32)
+import Control.Monad (fmap, forever, forM)
 
 class FromMsgPack a where
   unpack :: BS.ByteString -> Maybe a
@@ -64,18 +65,22 @@ parseInt32 = do
       0xd2 -> Just val
       _ -> Nothing
 
+instance FromMsgPack Int32 where
+  unpack b = runGet parseInt32 b
+
 unparseArray32Header :: [a] -> Put
 unparseArray32Header i = do
     putWord8 0xdd
     putInt32be (fromIntegral (length i) :: Int32)
 
-parseArray32Header :: Get (Maybe Int32)
-parseArray32Header i = do
+parseArrayHeader :: Get (Maybe Int32)
+parseArrayHeader = do
     msgPackType <- getWord8
-    size <- getInt32be
+    --size <- getInt32be
     case msgPackType of
-        0xdd -> Just size
-        _ -> Nothing
+        0xdd -> fmap Just getInt32be
+        0xdc -> fmap (Just . (\x -> (fromIntegral x :: Int32))) getInt16be
+        _ -> return $ Nothing
 
 packVec :: ToMsgPack a => [a] -> BS.ByteString
 packVec b = do
@@ -83,8 +88,11 @@ packVec b = do
   let serialisedArray = fmap pack b
   BS.concat $ [header] ++ serialisedArray
 
--- unpackVec :: FromMsgPack a => BS.ByteString -> [a]
--- unpackVec b = do
---   let header = runGet $ parseArray32Header b
---   let serialisedArray = fmap pack b
---   BS.concat $ [header] ++ serialisedArray  
+unpackVec :: FromMsgPack a => BS.ByteString -> Maybe [a]
+unpackVec b = do
+    let numElems = runGet parseArrayHeader b
+    case numElems of
+      Just 0 -> Just []
+      Just n -> forM [1..1] (\y -> unpack b)
+      _ -> Nothing
+
