@@ -7,10 +7,12 @@ import Data.Binary.Put (putWord8, Put, runPut, putInt32be)
 import Data.Binary.Get (Get, getWord8, runGet, getInt32be, getInt16be)
 import Data.Int (Int32)
 import Data.Word (Word32)
-import Control.Monad (fmap, forever, forM)
+import Control.Monad (replicateM)
+import Data.Maybe
 
 class FromMsgPack a where
   unpack :: BS.ByteString -> Maybe a
+  parseObject :: Get (Maybe a)
 
 class ToMsgPack a where
   pack :: a -> BS.ByteString
@@ -22,26 +24,23 @@ unparseBool True = putWord8 0xc3
 instance ToMsgPack Bool where
   pack b = runPut $ unparseBool b
 
-parseBool :: Get (Maybe Bool)
-parseBool = do
-  msgpackType <- getWord8
-  return (case msgpackType of
-    0xc2 -> Just False
-    0xc3 -> Just True
-    _    -> Nothing)
-
 instance FromMsgPack Bool where
-  unpack b = runGet parseBool b
-
-parseNil :: Get (Maybe ())
-parseNil = do
-  msgpackType <- getWord8
-  return (case msgpackType of
-    0xc0 -> Just ()
-    _    -> Nothing)
+  parseObject = do
+    msgpackType <- getWord8
+    return (case msgpackType of
+      0xc2 -> Just False
+      0xc3 -> Just True
+      _    -> Nothing)
+  unpack b = runGet parseObject b
 
 instance FromMsgPack () where
-  unpack b = runGet parseNil b
+  parseObject = do
+    msgpackType <- getWord8
+    return (case msgpackType of
+      0xc0 -> Just ()
+      _    -> Nothing)
+
+  unpack b = runGet parseObject b
 
 unparseNil :: () -> Put
 unparseNil () = putWord8 0xc0
@@ -88,11 +87,15 @@ packVec b = do
   let serialisedArray = fmap pack b
   BS.concat $ [header] ++ serialisedArray
 
-unpackVec :: FromMsgPack a => BS.ByteString -> Maybe [a]
-unpackVec b = do
-    let numElems = runGet parseArrayHeader b
+unpackVecGet :: (FromMsgPack a) => Get (Maybe [a])
+unpackVecGet = do
+    numElems <- parseArrayHeader
     case numElems of
-      Just 0 -> Just []
-      Just n -> forM [1..1] (\y -> unpack b)
-      _ -> Nothing
+      Just 0 -> return $ Just []
+      Just n -> do
+        val <- replicateM (fromIntegral n :: Int) parseObject
+        return $ sequence val
+      _ -> return $ Nothing
 
+unpackVec :: FromMsgPack a => BS.ByteString -> Maybe [a]
+unpackVec b = runGet unpackVecGet b
