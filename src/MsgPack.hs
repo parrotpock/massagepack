@@ -56,16 +56,15 @@ unparseInt32 i = do
 instance ToMsgPack Int32 where
   pack b = runPut $ unparseInt32 b
 
-parseInt32 :: Get (Maybe Int32)
-parseInt32 = do
+instance FromMsgPack Int32 where
+  parseObject = do
     msgPackType <- getWord8
     val <- getInt32be
     return $ case msgPackType of
       0xd2 -> Just val
       _ -> Nothing
 
-instance FromMsgPack Int32 where
-  unpack b = runGet parseInt32 b
+  unpack b = runGet parseObject b
 
 unparseArray32Header :: [a] -> Put
 unparseArray32Header i = do
