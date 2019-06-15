@@ -74,7 +74,6 @@ unparseArray32Header i = do
 parseArrayHeader :: Get (Maybe Int32)
 parseArrayHeader = do
     msgPackType <- getWord8
-    --size <- getInt32be
     case msgPackType of
         0xdd -> fmap Just getInt32be
         0xdc -> fmap (Just . (\x -> (fromIntegral x :: Int32))) getInt16be
