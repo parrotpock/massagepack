@@ -69,9 +69,22 @@ unparseArray32Header i = do
     putWord8 0xdd
     putInt32be (fromIntegral (length i) :: Int32)
 
-    
+parseArray32Header :: Get (Maybe Int32)
+parseArray32Header i = do
+    msgPackType <- getWord8
+    size <- getInt32be
+    case msgPackType of
+        0xdd -> Just size
+        _ -> Nothing
+
 packVec :: ToMsgPack a => [a] -> BS.ByteString
 packVec b = do
   let header = runPut $ unparseArray32Header b
   let serialisedArray = fmap pack b
   BS.concat $ [header] ++ serialisedArray
+
+-- unpackVec :: FromMsgPack a => BS.ByteString -> [a]
+-- unpackVec b = do
+--   let header = runGet $ parseArray32Header b
+--   let serialisedArray = fmap pack b
+--   BS.concat $ [header] ++ serialisedArray  
