@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 
 module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
@@ -63,5 +64,14 @@ parseInt32 = do
       0xd2 -> Just val
       _ -> Nothing
 
-instance FromMsgPack Int32 where
-  unpack b = runGet parseInt32 b
+unparseArray32Header :: [a] -> Put
+unparseArray32Header i = do
+    putWord8 0xdd
+    putInt32be (fromIntegral (length i) :: Int32)
+
+    
+packVec :: ToMsgPack a => [a] -> BS.ByteString
+packVec b = do
+  let header = runPut $ unparseArray32Header b
+  let serialisedArray = fmap pack b
+  BS.concat $ [header] ++ serialisedArray

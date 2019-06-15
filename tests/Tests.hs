@@ -22,3 +22,5 @@ testReverseNil =
 testReverseInt32 =
   let val = 234234::Int32 in
   testCase "Deserialising a serialised Int32 gives a Just Int32" $ assertEqual [] (unpack $ pack val) (Just val)
+
+
