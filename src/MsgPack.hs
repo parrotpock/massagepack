@@ -79,17 +79,15 @@ parseArrayHeader = do
         0xdc -> fmap (Just . (\x -> (fromIntegral x :: Int32))) getInt16be
         _ -> return $ Nothing
 
-packVec :: ToMsgPack a => [a] -> BS.ByteString
-packVec b = do
-  let header = runPut $ unparseArray32Header b
-  let serialisedArray = fmap pack b
-  BS.concat $ [header] ++ serialisedArray
-
 instance ToMsgPack a => ToMsgPack [a] where
-  pack = packVec
+  pack b = do
+    let header = runPut $ unparseArray32Header b
+    let serialisedArray = fmap pack b
+    BS.concat $ [header] ++ serialisedArray
 
-unpackVecGet :: (FromMsgPack a) => Get (Maybe [a])
-unpackVecGet = do
+instance FromMsgPack a => FromMsgPack [a] where
+  unpack b = runGet parseObject b
+  parseObject = do
     numElems <- parseArrayHeader
     case numElems of
       Just 0 -> return $ Just []
@@ -97,6 +95,3 @@ unpackVecGet = do
         val <- replicateM (fromIntegral n :: Int) parseObject
         return $ sequence val
       _ -> return $ Nothing
-
-unpackVec :: FromMsgPack a => BS.ByteString -> Maybe [a]
-unpackVec b = runGet unpackVecGet b
