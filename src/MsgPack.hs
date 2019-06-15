@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
-
 module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
 import qualified Data.ByteString.Lazy as BS
