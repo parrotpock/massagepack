@@ -3,7 +3,7 @@ module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
 import qualified Data.ByteString.Lazy as BS
 import Data.Binary.Put (putWord8, Put, runPut, putInt32be)
-import Data.Binary.Get (Get, getWord8, runGet, getWord32be, getInt32be)
+import Data.Binary.Get (Get, getWord8, runGet, getInt32be)
 import Data.Int (Int32)
 import Data.Word (Word32)
 
