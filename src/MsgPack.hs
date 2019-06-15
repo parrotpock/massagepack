@@ -2,8 +2,10 @@
 module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
 import qualified Data.ByteString.Lazy as BS
-import Data.Binary.Put (putWord8, Put, runPut)
-import Data.Binary.Get (Get, getWord8, runGet)
+import Data.Binary.Put (putWord8, Put, runPut, putWord32be)
+import Data.Binary.Get (Get, getWord8, runGet, getWord32be)
+import Data.Int (Int32)
+import Data.Word (Word32)
 
 class FromMsgPack a where
   unpack :: BS.ByteString -> Maybe a
@@ -45,3 +47,21 @@ unparseNil () = putWord8 0xc0
 instance ToMsgPack () where
   pack b = runPut $ unparseNil b
 
+
+unparseInt32 :: Int32 -> Put
+unparseInt32 i = do
+    putWord8 0xd2
+    putWord32be (fromIntegral i :: Word32)
+
+instance ToMsgPack Int32 where
+  pack b = runPut $ unparseInt32 b
+
+parseInt32 :: Get (Maybe Int32)
+parseInt32 = do
+    msgPackType <- getWord8
+    return (case msgPackType of
+      0xd2 -> do {val <- getWord32be; Just $ toInteger val :: Int32}
+      _ -> Nothing)
+
+instance FromMsgPack Int32 where
+  unpack b = runGet parseInt32 b
