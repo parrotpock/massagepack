@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
 
 module MsgPack (FromMsgPack, ToMsgPack, pack, unpack) where
 
@@ -84,6 +84,9 @@ packVec b = do
   let header = runPut $ unparseArray32Header b
   let serialisedArray = fmap pack b
   BS.concat $ [header] ++ serialisedArray
+
+instance ToMsgPack a => ToMsgPack [a] where
+  pack = packVec
 
 unpackVecGet :: (FromMsgPack a) => Get (Maybe [a])
 unpackVecGet = do
