@@ -7,6 +7,9 @@ import Data.Int (Int32)
 import Data.Word (Word32)
 import Control.Monad (replicateM)
 import Data.Maybe
+import System.CPUTime
+import Text.Printf
+
 
 class FromMsgPack a where
   unpack :: BS.ByteString -> Maybe a
@@ -14,13 +17,12 @@ class FromMsgPack a where
 
 class ToMsgPack a where
   pack :: a -> BS.ByteString
-
-unparseBool :: Bool -> Put
-unparseBool False = putWord8 0xc2
-unparseBool True = putWord8 0xc3
+  unparseObject :: a -> Put
 
 instance ToMsgPack Bool where
-  pack b = runPut $ unparseBool b
+  pack b = runPut $ unparseObject b
+  unparseObject False = putWord8 0xc2
+  unparseObject True = putWord8 0xc3
 
 instance FromMsgPack Bool where
   parseObject = do
@@ -40,19 +42,15 @@ instance FromMsgPack () where
 
   unpack b = runGet parseObject b
 
-unparseNil :: () -> Put
-unparseNil () = putWord8 0xc0
-
 instance ToMsgPack () where
-  pack b = runPut $ unparseNil b
-
-unparseInt32 :: Int32 -> Put
-unparseInt32 i = do
-    putWord8 0xd2
-    putInt32be i
+  pack b = runPut $ unparseObject b
+  unparseObject () = putWord8 0xc0
 
 instance ToMsgPack Int32 where
-  pack b = runPut $ unparseInt32 b
+  pack b = runPut $ unparseObject b
+  unparseObject i = do
+    putWord8 0xd2
+    putInt32be i
 
 instance FromMsgPack Int32 where
   parseObject = do
@@ -79,9 +77,15 @@ parseArrayHeader = do
 
 instance ToMsgPack a => ToMsgPack [a] where
   pack b = do
-    let header = runPut $ unparseArray32Header b
-    let serialisedArray = fmap pack b
-    BS.concat $ [header] ++ serialisedArray
+    runPut $ unparseObject b
+  unparseObject os = do
+    unparseArray32Header os
+    unparseList os
+      where
+    unparseList [] = return ()
+    unparseList (o:os) = do
+      unparseObject o
+      unparseList os
 
 instance FromMsgPack a => FromMsgPack [a] where
   unpack b = runGet parseObject b
