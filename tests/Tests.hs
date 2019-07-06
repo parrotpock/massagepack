@@ -1,7 +1,12 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 import Test.Tasty (defaultMain, testGroup)
 import Test.Tasty.HUnit (assertEqual, testCase)
 import MsgPack (pack, unpack)
 import Data.Int (Int32)
+import Test.QuickCheck
+import MsgPack
+--import Props
 
 main = defaultMain unitTests
 
@@ -23,4 +28,4 @@ testReverseInt32 =
   let val = 234234::Int32 in
   testCase "Deserialising a serialised Int32 gives a Just Int32" $ assertEqual [] (unpack $ pack val) (Just val)
 
-
+--testPropReversable = quickCheck prop_reversable

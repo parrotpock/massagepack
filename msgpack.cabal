@@ -39,6 +39,7 @@ test-suite test-hunit-msgpack
                   , tasty
                   , tasty-hunit
                   , msgpack
+                  , QuickCheck
     
 source-repository head
   type:     git
